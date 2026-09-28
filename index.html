@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>放課後選択ナビ デモ版</title>
+<meta name="description" content="家庭の条件から放課後の過ごし方を組み立て、校区ごとの格差を可視化する「放課後選択ナビ」のデモ版（模擬データ）">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F6FA; --surface:#FFFFFF; --surface-2:#F7FAFD; --ink:#1B2A3A; --ink-2:#4F5E6F; --ink-3:#7A8898; --line:#D8E1EB;
+  --blue:#2B67B1; --blue-soft:#E4EEF9; --orange:#C95E14; --orange-soft:#FCEBDC; --amber:#F2B01E; --red:#C93C3C; --red-soft:#FBE7E7;
+  --k-gakudou:#21477C; --k-kyoushitsu:#2F74C4; --k-jidoukan:#2A9BC4; --k-activity:#2A9A70; --k-fami:#7A56B4; --k-bus:#9A7BD0; --k-walk:#B8C4D1; --k-wait:#DCE3EA;
+  --radius-lg:18px; --radius-md:12px; --radius-sm:8px;
+  --font-body:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic UI","Yu Gothic","Meiryo",system-ui,sans-serif;
+  --font-head:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic","Meiryo",system-ui,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1620; --surface:#16212D; --surface-2:#1B2735; --ink:#E7EEF6; --ink-2:#AEBBCA; --ink-3:#8494A6; --line:#2B3A4A;
+    --blue:#6FA6E6; --blue-soft:#1C2E45; --orange:#F0914A; --orange-soft:#3A2618; --red:#EE7373; --red-soft:#3A1F22;
+    --k-walk:#4D5D6E; --k-wait:#34414F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1620; --surface:#16212D; --surface-2:#1B2735; --ink:#E7EEF6; --ink-2:#AEBBCA; --ink-3:#8494A6; --line:#2B3A4A;
+  --blue:#6FA6E6; --blue-soft:#1C2E45; --orange:#F0914A; --orange-soft:#3A2618; --red:#EE7373; --red-soft:#3A1F22;
+  --k-walk:#4D5D6E; --k-wait:#34414F;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 76px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.7;-webkit-text-size-adjust:100%}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px;border-radius:6px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+.num{font-variant-numeric:tabular-nums}
+
+/* header */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.bar .wrap{display:flex;align-items:center;gap:16px;min-height:64px;flex-wrap:wrap;padding-top:6px;padding-bottom:6px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-head);font-weight:900;font-size:22px;letter-spacing:.02em;color:var(--blue);white-space:nowrap}
+.brand .sel{color:var(--amber)}
+.brand svg{flex:none}
+.demo-tag{font-size:12px;color:var(--ink-2);border:1px dashed var(--ink-3);border-radius:999px;padding:2px 10px;white-space:nowrap}
+.tabs{display:flex;gap:4px;margin-left:auto;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:4px}
+.tabs button{border:0;background:transparent;padding:6px 16px;border-radius:999px;cursor:pointer;font-weight:700;color:var(--ink-2)}
+.tabs button[aria-selected="true"]{background:var(--blue);color:#fff}
+.tabs button[data-tab="muni"][aria-selected="true"]{background:var(--orange)}
+.tour-btn{border:0;background:var(--amber);color:#2A1D00;font-weight:700;padding:8px 16px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.tour-btn:hover{filter:brightness(1.05)}
+
+main{padding:22px 0 60px}
+.lead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:0 0 18px}
+.lead h1{font-family:var(--font-head);font-weight:900;font-size:clamp(22px,2.6vw,30px);margin:0;line-height:1.35}
+.lead p{margin:0;color:var(--ink-2)}
+section[hidden]{display:none}
+
+/* parent layout */
+.p-grid{display:grid;grid-template-columns:340px 1fr;gap:22px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg)}
+.form{padding:18px 18px 20px;position:sticky;top:calc(env(safe-area-inset-top,0px) + 84px)}
+.form h2,.results h2,.side h2,.card h2{font-family:var(--font-head);font-size:17px;margin:0 0 10px}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.presets button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 12px;cursor:pointer;font-size:13px}
+.presets button[aria-pressed="true"]{border-color:var(--blue);background:var(--blue-soft);color:var(--blue);font-weight:700}
+.field{margin-top:12px}
+.field>label,.field>.lbl{display:block;font-size:13px;font-weight:700;color:var(--ink-2);margin-bottom:5px}
+.field select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface-2)}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button{flex:1 1 auto;min-width:40px;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--radius-sm);padding:6px 8px;cursor:pointer;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+.range-row{display:flex;align-items:center;gap:10px}
+.range-row input{flex:1;accent-color:var(--blue)}
+.range-row output{min-width:78px;text-align:right;font-weight:700}
+.note{font-size:12px;color:var(--ink-3);margin-top:12px;line-height:1.6}
+
+.results{min-width:0}
+.status{padding:16px 20px;border-radius:var(--radius-lg);margin-bottom:16px;border:1px solid var(--line);background:var(--surface)}
+.status .big{font-family:var(--font-head);font-weight:900;font-size:20px}
+.status.ng{background:var(--red-soft);border-color:color-mix(in srgb,var(--red) 40%,transparent)}
+.status .sub{color:var(--ink-2);font-size:14px}
+
+.plan{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px 20px 16px;margin-bottom:16px}
+.plan.first{border:2px solid var(--blue)}
+.plan-head{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.plan-name{display:flex;gap:10px;align-items:center}
+.plan-name .badge{font-family:var(--font-head);font-weight:900;background:var(--blue);color:#fff;border-radius:10px;padding:2px 10px;font-size:14px;white-space:nowrap;flex:none}
+.plan.ngplan .plan-name .badge{background:var(--red)}
+.plan-name h3{margin:0;font-size:16px;font-family:var(--font-head);line-height:1.4}
+.price{text-align:right}
+.price .yen{font-family:var(--font-head);font-weight:900;font-size:26px;line-height:1.1}
+.price .yen small{font-size:14px;font-weight:700}
+.price .before{font-size:12px;color:var(--ink-3)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
+.tag{font-size:12px;border-radius:999px;padding:2px 10px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+.tag.ok{background:var(--blue-soft);border-color:transparent;color:var(--blue);font-weight:700}
+.tag.warn{background:var(--red-soft);border-color:transparent;color:var(--red);font-weight:700}
+
+/* the time ribbon */
+.week{display:grid;grid-template-columns:28px 1fr;gap:6px 10px;align-items:center}
+.axis{grid-column:2;position:relative;height:18px;font-size:11px;color:var(--ink-3)}
+.axis span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.axis span:first-child{transform:none}
+.axis span:last-child{transform:translateX(-100%)}
+.day{font-weight:700;font-size:13px;color:var(--ink-2);text-align:center}
+.track{position:relative;height:34px;background:var(--surface-2);border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.seg-b{position:absolute;top:0;bottom:0;display:block;line-height:32px;text-align:center;color:#fff;font-size:11.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;border-right:2px solid var(--surface)}
+.seg-b:last-child{border-right:0}
+.seg-b.walk,.seg-b.wait{color:var(--ink-2);font-weight:500}
+.seg-b.gap{background:repeating-linear-gradient(135deg,var(--red) 0 6px,color-mix(in srgb,var(--red) 55%,var(--surface)) 6px 12px);}
+.k-gakudou{background:var(--k-gakudou)} .k-kyoushitsu{background:var(--k-kyoushitsu)} .k-jidoukan{background:var(--k-jidoukan)}
+.k-activity{background:var(--k-activity)} .k-fami{background:var(--k-fami)} .k-bus{background:var(--k-bus)} .k-walk{background:var(--k-walk)} .k-wait{background:var(--k-wait)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--ink-2);margin:0 0 14px}
+.cond{display:none;align-items:center;justify-content:space-between;gap:10px;font-size:13px;color:var(--ink-2);margin:-4px 0 12px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+details.flow{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+details.flow summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)}
+.items{margin:10px 0 0;padding:0;list-style:none;font-size:13.5px}
+.items li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.items li:last-child{border-bottom:0}
+.items .fee{white-space:nowrap;font-weight:700}
+.items .fee s{color:var(--ink-3);font-weight:400;margin-right:6px}
+.dayflow{font-size:13px;color:var(--ink-2);margin:8px 0 0;padding-left:0;list-style:none}
+.dayflow li{padding:3px 0}
+.dayflow b{color:var(--ink);margin-right:6px}
+.gaplist{margin:10px 0 0;padding:0;list-style:none}
+.gaplist li{padding:6px 10px;border-radius:var(--radius-sm);background:var(--red-soft);color:var(--red);font-weight:700;font-size:13.5px;margin-bottom:6px}
+.linkbtn{border:0;background:none;color:var(--orange);font-weight:700;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px}
+
+/* municipality */
+.m-controls{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;margin-bottom:16px}
+.m-controls .seg button[aria-pressed="true"]{background:var(--orange);border-color:var(--orange)}
+.m-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:20px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:18px 20px}
+.mapbox svg{width:100%;height:auto;display:block}
+.mapbox polygon{stroke:var(--surface);stroke-width:3;cursor:pointer;transition:fill .35s ease}
+.mapbox polygon.sel{stroke:var(--ink);stroke-width:4}
+.mapbox .lbl{font-family:var(--font-head);font-weight:900;pointer-events:none}
+.mapbox g:focus-visible polygon{stroke:var(--amber);stroke-width:5}
+.mapbox g{outline:none}
+.scale{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--ink-2);margin-top:8px}
+.scale .bar-g{flex:1;height:10px;border-radius:5px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.stat{background:var(--surface-2);border-radius:var(--radius-md);padding:10px 12px}
+.stat .v{font-family:var(--font-head);font-weight:900;font-size:22px}
+.stat .k{font-size:12px;color:var(--ink-2)}
+.side h2{display:flex;align-items:baseline;gap:10px}
+.side h2 .idx{font-size:28px;color:var(--orange)}
+.tbars{margin:6px 0 14px}
+.tbar{display:grid;grid-template-columns:96px 1fr 88px;gap:8px;align-items:center;font-size:13px;margin:6px 0}
+.tbar .t{height:12px;background:var(--surface-2);border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.tbar .t i{display:block;height:100%;background:var(--orange);transition:width .45s ease}
+.tbar .v{text-align:right;font-weight:700}
+.tbar .v .up{color:var(--blue)}
+.tbar.cur{font-weight:700}
+.sub-h{font-size:13px;font-weight:700;color:var(--ink-2);margin:14px 0 6px}
+.hist svg{width:100%;height:auto;display:block}
+.policies{display:grid;gap:8px;margin-top:6px}
+.policies button{text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:var(--radius-md);padding:10px 12px;cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+.policies button .box{flex:none;width:18px;height:18px;border-radius:5px;border:2px solid var(--ink-3);margin-top:3px;display:grid;place-items:center}
+.policies button[aria-pressed="true"]{border-color:var(--orange);background:var(--orange-soft)}
+.policies button[aria-pressed="true"] .box{background:var(--orange);border-color:var(--orange)}
+.policies button[aria-pressed="true"] .box::after{content:"";width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.policies b{display:block;font-size:14px}
+.policies span.d{font-size:12px;color:var(--ink-2)}
+.effect{margin-top:12px;padding:10px 12px;border-radius:var(--radius-md);background:var(--blue-soft);color:var(--ink);font-size:13.5px}
+.effect:empty{display:none}
+.matrix{margin-top:20px}
+.tscroll{overflow-x:auto}
+table.mx{border-collapse:separate;border-spacing:4px;width:100%;min-width:520px;font-size:13px;table-layout:fixed}
+table.mx tr:first-child th:first-child{width:84px}
+table.mx th{font-weight:700;color:var(--ink-2);text-align:center;padding:4px}
+table.mx th.row{text-align:left;white-space:nowrap}
+table.mx td{text-align:center;border-radius:8px;padding:8px 4px;font-weight:700;cursor:pointer}
+table.mx tr.sel th.row{color:var(--orange)}
+table.mx th.col-sel{color:var(--orange)}
+table.mx td.col-sel{outline:2px solid var(--orange);outline-offset:-2px}
+
+/* how it works */
+.how{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.how .card h2{margin-bottom:8px}
+.how ol{margin:0;padding-left:1.4em}
+.how ol li{margin:6px 0}
+.how table{border-collapse:collapse;width:100%;font-size:13.5px}
+.how td,.how th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+.how th{color:var(--ink-2);white-space:nowrap;font-weight:700}
+.how .wide{grid-column:1/-1}
+.how p{margin:0 0 8px}
+
+footer{border-top:1px solid var(--line);color:var(--ink-3);font-size:12.5px;padding:18px 0 28px}
+footer p{margin:4px 0}
+
+/* tour */
+.tour{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:50;width:min(640px,calc(100% - 24px));background:var(--ink);color:var(--bg);border-radius:18px;padding:16px 18px 14px;box-shadow:0 14px 40px rgba(10,20,35,.35)}
+.tour[hidden]{display:none}
+.tour .t-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;opacity:.8;margin-bottom:6px}
+.tour .t-text{font-size:15px;line-height:1.7;min-height:3.4em}
+.tour .t-ctrl{display:flex;gap:8px;align-items:center;margin-top:10px}
+.tour .t-ctrl button{border:0;border-radius:999px;padding:6px 14px;cursor:pointer;font-weight:700;background:rgba(255,255,255,.14);color:inherit}
+.tour .t-ctrl .next{background:var(--amber);color:#2A1D00;margin-left:auto}
+.tour .prog{height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:10px;overflow:hidden}
+.tour .prog i{display:block;height:100%;width:0;background:var(--amber)}
+.spot{outline:4px solid var(--amber)!important;outline-offset:4px;border-radius:14px;transition:outline-color .2s}
+
+@media (max-width:980px){
+  .p-grid,.m-grid,.how{grid-template-columns:1fr}
+  .form{position:static}
+  .results{order:-1}
+  .cond{display:flex}
+  .tabs{margin-left:0;order:3;width:100%;justify-content:space-between}
+  .tabs button{flex:1;padding:6px 8px}
+}
+@media (max-width:560px){
+  .wrap{padding:0 14px}
+  .brand{font-size:19px}
+  .demo-tag{display:none}
+  .stats{grid-template-columns:1fr 1fr 1fr}
+  .stat .v{font-size:18px}
+  .track{height:30px}
+  .seg-b{font-size:10.5px;line-height:28px;padding:0 2px}
+  .price .yen{font-size:22px}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important;scroll-behavior:auto!important}
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]) .seg button[aria-pressed="true"],
+  :root:not([data-theme="light"]) .tabs button[aria-selected="true"],
+  :root:not([data-theme="light"]) .plan-name .badge{color:#0E1620}
+}
+:root[data-theme="dark"] .seg button[aria-pressed="true"],
+:root[data-theme="dark"] .tabs button[aria-selected="true"],
+:root[data-theme="dark"] .plan-name .badge{color:#0E1620}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="wrap">
+    <div class="brand" aria-label="放課後選択ナビ">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="3"/><path d="M20.5 11.5 L14 14 L11.5 20.5 L18 18 Z" fill="#F2B01E" stroke="#F2B01E" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      <span>放課後<span class="sel">選択</span>ナビ</span>
+    </div>
+    <span class="demo-tag">デモ版　データはすべて架空の「みらい市」</span>
+    <nav class="tabs" role="tablist" aria-label="画面の切り替え">
+      <button role="tab" data-tab="parent" aria-selected="true" aria-controls="parent">保護者向け</button>
+      <button role="tab" data-tab="muni" aria-selected="false" aria-controls="muni">自治体向け</button>
+      <button role="tab" data-tab="how" aria-selected="false" aria-controls="how">仕組み</button>
+    </nav>
+    <button class="tour-btn" id="tourStart">1分で見る</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- ===== 保護者向け ===== -->
+  <section id="parent" role="tabpanel" aria-label="保護者向け 放課後プラン">
+    <div class="lead">
+      <h1>学校が終わってから帰宅まで、つなげる放課後を探す</h1>
+      <p>家庭の条件を入れると、地域の資源を組み合わせたプランをその場で計算します。</p>
+    </div>
+    <div class="p-grid">
+      <form class="panel form" id="famForm" onsubmit="return false" aria-label="家庭の条件">
+        <h2>家庭の条件</h2>
+        <div class="presets" id="presets" aria-label="例の家庭"></div>
+        <div class="field"><label for="fDistrict">住んでいる校区</label><select id="fDistrict"></select></div>
+        <div class="field"><span class="lbl" id="lGrade">子どもの学年</span><div class="seg" id="fGrade" role="group" aria-labelledby="lGrade"></div></div>
+        <div class="field"><label for="fEnd">学校が終わる時刻</label><select id="fEnd"></select></div>
+        <div class="field"><label for="fHome">保護者が帰宅する時刻</label><select id="fHome"></select></div>
+        <div class="field"><label for="fBudget">放課後にかけられる月の予算</label>
+          <div class="range-row"><input type="range" id="fBudget" min="0" max="20000" step="500"><output id="oBudget" class="num" for="fBudget"></output></div></div>
+        <div class="field"><span class="lbl" id="lEscort">保護者による送り迎え</span><div class="seg" id="fEscort" role="group" aria-labelledby="lEscort"></div></div>
+        <div class="field"><span class="lbl" id="lSub">助成の対象（ひとり親・低所得）</span><div class="seg" id="fSub" role="group" aria-labelledby="lSub"></div></div>
+        <div class="field"><span class="lbl" id="lInt">子どものやりたいこと</span><div class="seg" id="fInt" role="group" aria-labelledby="lInt"></div></div>
+        <div class="field"><span class="lbl" id="lSeason">時期</span><div class="seg" id="fSeason" role="group" aria-labelledby="lSeason"></div></div>
+        <p class="note">入力した条件はこの画面の中だけで計算に使い、保存も送信もしません。</p>
+      </form>
+      <div class="results" id="results" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- ===== 自治体向け ===== -->
+  <section id="muni" role="tabpanel" aria-label="自治体向け 格差マップ" hidden>
+    <div class="lead">
+      <h1>どの校区で、どんな家庭が取り残されているか</h1>
+      <p>校区ごとに、平日5日のうちプランが成立する日の割合（放課後アクセス指数）を計算しています。</p>
+    </div>
+    <div class="m-controls">
+      <div class="field" style="margin:0"><span class="lbl" id="lType">家庭の類型</span><div class="seg" id="mType" role="group" aria-labelledby="lType"></div></div>
+      <div class="field" style="margin:0"><span class="lbl" id="lMSeason">時期</span><div class="seg" id="mSeason" role="group" aria-labelledby="lMSeason"></div></div>
+    </div>
+    <div class="m-grid">
+      <div class="card mapbox" id="mapCard">
+        <h2 id="mapTitle">放課後アクセス指数</h2>
+        <svg id="map" viewBox="0 0 600 400" role="group" aria-label="みらい市の校区地図"></svg>
+        <div class="scale"><span>0%</span><div class="bar-g" id="scaleBar"></div><span>100%</span></div>
+        <div class="stats" id="stats"></div>
+      </div>
+      <div class="card side" id="side"></div>
+    </div>
+    <div class="card matrix" id="matrixCard">
+      <h2>校区と家庭の類型ごとの指数</h2>
+      <div class="tscroll"><table class="mx" id="matrix"></table></div>
+      <p class="note">セルを選ぶと、その校区と家庭の類型に切り替わります。施策を試した校区は、施策後の値を表示しています。</p>
+    </div>
+  </section>
+
+  <!-- ===== 仕組み ===== -->
+  <section id="how" role="tabpanel" aria-label="仕組み" hidden>
+    <div class="lead">
+      <h1>このデモの中で行っている計算</h1>
+      <p>結果はあらかじめ用意したものではなく、入力のたびにブラウザの中で計算しています。</p>
+    </div>
+    <div class="how">
+      <div class="card">
+        <h2>資源のデータ</h2>
+        <p>学童、放課後子供教室、児童館、体験活動、送迎支援を、同じ項目を持つ共通のデータとして扱います。</p>
+        <table>
+          <tr><th>開いている時間</th><td>曜日、開始時刻、終了時刻</td></tr>
+          <tr><th>場所</th><td>学校からの位置（徒歩の分数に換算）</td></tr>
+          <tr><th>費用</th><td>月額と、助成の種類（半額、月2,000円までなど）</td></tr>
+          <tr><th>対象</th><td>学年、時期ごとの定員の空き</td></tr>
+          <tr><th>送迎</th><td>学校からの送迎バス、自宅までの送り</td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h2>プランの組み立て方</h2>
+        <ol>
+          <li>学校が終わった時刻と場所から出発します。</li>
+          <li>その曜日に使える資源のうち、空白をつくらずに移れるものを順に探します。学年ごとに一人で歩ける距離の上限を設け、超える移動には送迎を使います。</li>
+          <li>保護者の帰宅時刻に、お迎え、送迎、または学年に応じた一人での帰宅のいずれかで家に着ければ、その日は成立です。</li>
+          <li>学童や体験活動の申し込みの組み合わせごとに平日5日を計算し、月の費用を助成込みで求めます。</li>
+          <li>予算内で5日すべてが成立するものを、興味との一致、費用の安さの順に並べます。</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h2>放課後アクセス指数</h2>
+        <p>ある校区に住む、ある条件の家庭について、予算内で平日5日のうちプランが成立する日の割合です。家庭の類型ごとに計算することで、同じ校区でも条件の厳しい家庭ほど選択肢が少ない実態を数値で示せます。</p>
+        <p>施策を試すと、資源のデータを書き換えて同じ計算をやり直します。どの施策が、どの家庭に効くのかを導入前に比較できます。</p>
+      </div>
+      <div class="card">
+        <h2>エントリーシートとの対応</h2>
+        <table>
+          <tr><th>保護者向け</th><td>5. 課題解決のアイデア ①放課後プラン</td></tr>
+          <tr><th>自治体向け</th><td>5. 課題解決のアイデア ②格差マップ</td></tr>
+          <tr><th>時期の切り替え</th><td>3. データに基づく分析（待機は5月から10月に約6割減少）</td></tr>
+          <tr><th>施策の比較</th><td>6. アイデアの実行方法（資源配置の判断材料）</td></tr>
+        </table>
+      </div>
+      <div class="card wide">
+        <h2>このデモでできないこと</h2>
+        <p>データはすべて架空の「みらい市」のもので、実在の施設・料金・制度とは関係ありません。助成の内容（学童は半額、体験活動は月2,000円まで、送迎サポートは半額）も説明のための仮の設定です。予約やログイン、事業者の案内文から生成AIで情報を読み取る機能は、実装に向けた次の段階で扱います。実データ版では、兵庫県尼崎市の公開情報を用いる計画です。</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>3大学（関西・中央・法政）共催 データサイエンス・アイデアコンテスト2026 応募作品「放課後選択ナビ」のデモ版です。</p>
+    <p>表示されるデータはすべて架空です。入力内容は保存・送信されません。</p>
+  </div>
+</footer>
+
+<div class="tour" id="tour" hidden role="dialog" aria-live="polite" aria-label="1分ガイド">
+  <div class="t-top"><span id="tStep"></span><span id="tMode">自動で進みます</span></div>
+  <div class="t-text" id="tText"></div>
+  <div class="t-ctrl">
+    <button id="tPrev">戻る</button>
+    <button id="tPause">一時停止</button>
+    <button id="tEnd">終了</button>
+    <button class="next" id="tNext">次へ</button>
+  </div>
+  <div class="prog"><i id="tProg"></i></div>
+</div>
+
+<script>
+// ===== 放課後選択ナビ デモ：模擬データと計算エンジン =====
+// すべて架空の「みらい市」のデータです。
+const DAYS = ["月", "火", "水", "木", "金"];
+const ALL = [0, 1, 2, 3, 4];
+const T = (h, m = 0) => h * 60 + m;
+const fmt = (min) => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")}`;
+
+const FAMI = { fee: 300, maxMin: 60, rideMin: 10 };   // 放課後送迎サポート（ファミサポ）1回あたり
+const WALK_KMH = 4.5, ROAD = 1.2;
+const walkLimit = (g) => (g <= 2 ? 0.5 : g <= 4 ? 0.8 : 1.2);
+const WALK_HOME_MIN_GRADE = 3;
+
+const KIND = {
+  gakudou: "学童",
+  kyoushitsu: "放課後子供教室",
+  jidoukan: "児童館",
+  activity: "体験活動",
+};
+
+// pos は各校区の小学校を原点とした km 座標
+const DISTRICTS = [
+  { id: "minato", name: "みなと", famiDays: [0, 2], home: [0.3, -0.2],
+    poly: "20,30 160,20 170,110 150,205 20,195", label: [92, 108],
+    resources: [
+      { id: "mi-g", kind: "gakudou", name: "みなと学童", pos: [0, 0], days: ALL, start: T(14, 30), end: T(18, 30), fee: 6000, subsidy: "half", grades: [1, 6], cap: { may: "full", oct: "full" } },
+      { id: "mi-k", kind: "kyoushitsu", name: "みなと放課後子供教室", pos: [0, 0], days: [1, 3], start: T(14, 30), end: T(16, 30), fee: 0, grades: [1, 6] },
+      { id: "mi-a1", kind: "activity", name: "みなと英語クラブ", interest: "学習", pos: [0.9, 0.5], days: [2], start: T(17), end: T(18), fee: 5000, grades: [3, 6] },
+    ] },
+  { id: "kawabe", name: "かわべ", famiDays: ALL, home: [0.3, -0.2],
+    poly: "160,20 305,28 315,120 300,210 150,205 170,110", label: [235, 115],
+    resources: [
+      { id: "ka-g", kind: "gakudou", name: "かわべ学童", pos: [0, 0], days: ALL, start: T(14, 30), end: T(19), fee: 6000, subsidy: "half", grades: [1, 6], cap: { may: "open", oct: "open" } },
+      { id: "ka-k", kind: "kyoushitsu", name: "かわべ放課後子供教室", pos: [0, 0], days: [0, 2, 4], start: T(14, 30), end: T(16, 30), fee: 0, grades: [1, 6] },
+      { id: "ka-a1", kind: "activity", name: "かわべスイミング", interest: "スポーツ", pos: [1.6, 0.8], days: [1, 3], start: T(16, 30), end: T(17, 30), fee: 5500, grades: [1, 6], pickupFromSchool: true },
+    ] },
+  { id: "asahi", name: "あさひ", famiDays: ALL, home: [0.3, -0.2],
+    poly: "305,28 450,20 460,115 445,200 300,210 315,120", label: [380, 112],
+    resources: [
+      { id: "as-g", kind: "gakudou", name: "あさひ学童", pos: [0, 0], days: ALL, start: T(14, 30), end: T(19), fee: 6000, subsidy: "half", grades: [1, 6], cap: { may: "full", oct: "open" } },
+      { id: "as-k", kind: "kyoushitsu", name: "あさひ放課後子供教室", pos: [0, 0], days: ALL, start: T(14, 30), end: T(16, 45), fee: 0, grades: [1, 6] },
+      { id: "as-j", kind: "jidoukan", name: "あさひ児童館", pos: [-0.35, 0.3], days: ALL, start: T(10), end: T(18), fee: 0, grades: [1, 6] },
+      { id: "as-a1", kind: "activity", name: "あさひスポーツ教室", interest: "スポーツ", pos: [0.4, 0.25], days: [0, 2, 4], start: T(17), end: T(18), fee: 4000, subsidy: "cap", grades: [1, 6] },
+      { id: "as-a2", kind: "activity", name: "あさひ音楽教室", interest: "音楽", pos: [0.5, -0.3], days: [1, 3], start: T(16), end: T(17, 30), fee: 5000, grades: [1, 6] },
+      { id: "as-a3", kind: "activity", name: "あさひ学習ひろば", interest: "学習", pos: [-0.3, -0.35], days: ALL, start: T(16), end: T(18, 30), fee: 6000, subsidy: "cap", grades: [3, 6] },
+    ] },
+  { id: "takano", name: "たかの", famiDays: [0, 3, 4], home: [0.3, -0.2],
+    poly: "450,20 580,35 585,190 445,200 460,115", label: [515, 110],
+    resources: [
+      { id: "ta-g", kind: "gakudou", name: "たかの学童", pos: [0, 0], days: ALL, start: T(14, 30), end: T(19), fee: 6000, subsidy: "half", grades: [1, 6], cap: { may: "full", oct: "open" } },
+      { id: "ta-k", kind: "kyoushitsu", name: "たかの放課後子供教室", pos: [0, 0], days: [2, 4], start: T(14, 30), end: T(16, 30), fee: 0, grades: [1, 6] },
+      { id: "ta-j", kind: "jidoukan", name: "たかの児童館", pos: [0.5, 0.45], days: ALL, start: T(10), end: T(18), fee: 0, grades: [1, 6] },
+      { id: "ta-a1", kind: "activity", name: "たかの学習塾（送迎つき）", interest: "学習", pos: [1.2, 0.4], days: ALL, start: T(16), end: T(18, 30), fee: 7000, subsidy: "cap", grades: [3, 6], pickupFromSchool: true, dropHome: true },
+    ] },
+  { id: "nagisa", name: "なぎさ", famiDays: ALL, home: [0.3, -0.2],
+    poly: "20,195 150,205 160,300 140,380 25,370", label: [88, 292],
+    resources: [
+      { id: "na-g", kind: "gakudou", name: "なぎさ学童", pos: [0, 0], days: ALL, start: T(14, 30), end: T(18), fee: 4000, subsidy: "half", grades: [1, 6], cap: { may: "open", oct: "open" } },
+      { id: "na-a1", kind: "activity", name: "なぎさ少年サッカー", interest: "スポーツ", pos: [1.0, 0.6], days: [1], start: T(17), end: T(18, 30), fee: 3000, subsidy: "cap", grades: [3, 6] },
+    ] },
+  { id: "sakura", name: "さくら", famiDays: ALL, home: [0.3, -0.2],
+    poly: "150,205 300,210 310,300 290,385 140,380 160,300", label: [225, 298],
+    resources: [
+      { id: "sa-g", kind: "gakudou", name: "さくら学童", pos: [0, 0], days: ALL, start: T(14, 30), end: T(19), fee: 6000, subsidy: "half", grades: [1, 6], cap: { may: "full", oct: "open" } },
+      { id: "sa-k", kind: "kyoushitsu", name: "さくら放課後子供教室", pos: [0, 0], days: ALL, start: T(14, 30), end: T(17), fee: 0, grades: [1, 6] },
+      { id: "sa-j", kind: "jidoukan", name: "さくら児童館", pos: [0.6, 0.45], days: ALL, start: T(10), end: T(18), fee: 0, grades: [1, 6] },
+      { id: "sa-a1", kind: "activity", name: "さくら英会話", interest: "学習", pos: [0.3, 0.3], days: [0, 2], start: T(17), end: T(18), fee: 6000, grades: [1, 6] },
+    ] },
+  { id: "morino", name: "もりの", famiDays: [1, 2, 3, 4], home: [0.3, -0.2],
+    poly: "300,210 445,200 455,290 440,380 290,385 310,300", label: [372, 295],
+    resources: [
+      { id: "mo-g", kind: "gakudou", name: "もりの学童", pos: [0, 0], days: ALL, start: T(14, 30), end: T(19), fee: 6000, subsidy: "half", grades: [1, 6], cap: { may: "open", oct: "open" } },
+      { id: "mo-j", kind: "jidoukan", name: "もりの児童館", pos: [0.3, 0.2], days: ALL, start: T(10), end: T(18, 30), fee: 0, grades: [1, 6] },
+      { id: "mo-a1", kind: "activity", name: "もりの絵画教室", interest: "アート", pos: [0.2, -0.3], days: [4], start: T(16), end: T(17, 30), fee: 3000, subsidy: "cap", grades: [1, 6] },
+    ] },
+  { id: "hibari", name: "ひばり", famiDays: ALL, home: [0.3, -0.2],
+    poly: "445,200 585,190 580,370 440,380 455,290", label: [515, 290],
+    resources: [
+      { id: "hi-g", kind: "gakudou", name: "ひばり学童", pos: [0, 0], days: ALL, start: T(14, 30), end: T(19), fee: 6000, subsidy: "half", grades: [1, 6], cap: { may: "full", oct: "full" } },
+      { id: "hi-k", kind: "kyoushitsu", name: "ひばり放課後子供教室", pos: [0, 0], days: ALL, start: T(14, 30), end: T(16, 45), fee: 0, grades: [1, 6] },
+      { id: "hi-a1", kind: "activity", name: "ひばりダンススクール", interest: "スポーツ", pos: [0.45, 0.3], days: [1, 4], start: T(17), end: T(18, 30), fee: 4500, subsidy: "cap", grades: [1, 6] },
+    ] },
+];
+
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) * ROAD;
+const walkMin = (km) => Math.ceil((km / WALK_KMH) * 60);
+
+function monthlyFee(r, fam) {
+  if (!fam.subsidy || !r.subsidy) return r.fee;
+  if (r.subsidy === "half") return Math.round(r.fee / 2);
+  if (r.subsidy === "cap") return r.fee - Math.min(2000, r.fee);
+  return r.fee;
+}
+const famiFee = (fam) => (fam.subsidy ? FAMI.fee / 2 : FAMI.fee);
+
+function applyMods(d, mods) {
+  if (!mods || !mods.size) return d;
+  const c = { ...d, resources: d.resources.map((r) => ({ ...r, cap: r.cap ? { ...r.cap } : undefined })), famiDays: [...d.famiDays] };
+  if (mods.has("evening")) c.resources.push({ id: d.id + "-new", kind: "jidoukan", name: `${d.name}小 放課後の居場所（新設）`, pos: [0, 0], days: ALL, start: T(14, 30), end: T(19), fee: 0, grades: [1, 6], isNew: true });
+  if (mods.has("fami")) c.famiDays = [...ALL];
+  if (mods.has("gakudou")) c.resources.forEach((r) => { if (r.kind === "gakudou") r.cap = { may: "open", oct: "open" }; });
+  return c;
+}
+
+function usable(r, fam, season) {
+  if (fam.grade < r.grades[0] || fam.grade > r.grades[1]) return false;
+  if (r.cap && r.cap[season] === "full") return false;
+  return true;
+}
+
+// ---- 1日分の探索 ----
+function searchDay(fam, d, set, day, season) {
+  const H = fam.homeTime, S = fam.schoolEnd, lim = walkLimit(fam.grade);
+  const famiOK = d.famiDays.includes(day);
+  const avail = d.resources.filter((r) => r.days.includes(day) && usable(r, fam, season) &&
+    (r.kind === "gakudou" ? set.gakudou : r.kind === "activity" ? set.acts.includes(r.id) : true));
+  const acts = avail.filter((r) => r.kind === "activity");
+  const school = { pos: [0, 0], name: "学校" };
+  const sols = [];
+  let maxCover = S, reachedButNoWayHome = false, partial = [];
+
+  function finish(r, dep, segs) {
+    const out = [];
+    if (fam.escort && dep >= H) out.push({ kind: "pickup", from: H, to: H, label: "保護者がお迎え" });
+    if (r.dropHome && dep + 15 >= H) out.push({ kind: "bus", from: dep, to: Math.max(dep + 15, H), label: "送迎車で帰宅" });
+    if (fam.grade >= WALK_HOME_MIN_GRADE) {
+      const km = dist(r.pos, d.home);
+      if (km <= lim && dep + walkMin(km) >= H) out.push({ kind: "walk", from: dep, to: Math.max(dep + walkMin(km), H), label: `歩いて帰宅（${walkMin(km)}分）` });
+    }
+    if (famiOK && H - dep <= FAMI.maxMin) out.push({ kind: "fami", from: dep, to: Math.max(H, dep + FAMI.rideMin), label: "ファミサポで帰宅", fami: 1 });
+    for (const f of out) sols.push([...segs, f]);
+    if (!out.length && dep >= H) reachedButNoWayHome = true;
+    return out.length > 0;
+  }
+
+  function stay(r, from, dep, segs, visited, depth) {
+    const seg = { kind: r.kind, from, to: Math.min(dep, Math.max(H, from)), label: r.name, r };
+    const next = [...segs, seg];
+    const cov = Math.min(dep, H);
+    if (cov > maxCover) { maxCover = cov; partial = next; }
+    finish(r, dep, next);
+    if (dep < H && depth < 4) enter(r, dep, next, new Set([...visited, r.id]), depth + 1);
+  }
+
+  function enter(loc, t, segs, visited, depth) {
+    for (const r of avail) {
+      if (visited.has(r.id)) continue;
+      const km = dist(loc.pos, r.pos);
+      const moves = [];
+      if (km < 0.05) moves.push({ kind: null, min: 0 });
+      else if (km <= lim) moves.push({ kind: "walk", min: walkMin(km), label: `徒歩${walkMin(km)}分` });
+      if (loc === school && r.pickupFromSchool) moves.push({ kind: "bus", min: 10, label: "送迎バス" });
+      if (famiOK && km > lim) moves.push({ kind: "fami", min: FAMI.rideMin, label: "ファミサポで移動", fami: 1 });
+      for (const m of moves) {
+        const ta = t + m.min;
+        const mseg = m.kind ? [{ kind: m.kind, from: t, to: ta, label: m.label, fami: m.fami || 0 }] : [];
+        if (r.kind === "activity") {
+          if (ta > r.start || r.start - ta > 15) continue;
+          const wait = r.start > ta ? [{ kind: "wait", from: ta, to: r.start, label: "会場で待機" }] : [];
+          stay(r, r.start, r.end, [...segs, ...mseg, ...wait], visited, depth);
+        } else {
+          if (r.start > ta + 10 || r.end <= ta) continue;
+          const a = Math.max(ta, r.start);
+          const cands = new Set([Math.min(r.end, H)]);
+          if (r.end > H) cands.add(H);
+          for (const x of acts) {
+            if (visited.has(x.id) || x.id === r.id) continue;
+            const k2 = dist(r.pos, x.pos);
+            if (k2 <= lim) cands.add(x.start - (k2 < 0.05 ? 0 : walkMin(k2)));
+            if (famiOK) cands.add(x.start - FAMI.rideMin);
+          }
+          cands.add(H - FAMI.maxMin);
+          const kh = dist(r.pos, d.home);
+          if (kh <= lim) cands.add(H - walkMin(kh));
+          for (const dep of cands) if (dep > a && dep <= r.end) stay(r, ta, dep, [...segs, ...mseg], visited, depth);
+        }
+      }
+    }
+  }
+  enter(school, S, [], new Set(), 0);
+
+  if (!sols.length) {
+    return { ok: false, partial, gap: (reachedButNoWayHome || maxCover >= H) ? { from: H, to: H, reason: "home" } : { from: maxCover, to: H, reason: "gap" }, maxCover };
+  }
+  const score = (s) => {
+    const fami = s.reduce((n, x) => n + (x.fami || 0), 0);
+    const usedActs = s.filter((x) => x.kind === "activity").length;
+    const stays = s.filter((x) => KIND[x.kind]).length;
+    return fami * 10 - usedActs * 25 + stays;
+  };
+  sols.sort((a, b) => score(a) - score(b));
+  const best = sols[0];
+  return { ok: true, segs: best, fami: best.reduce((n, x) => n + (x.fami || 0), 0) };
+}
+
+// ---- 週単位のプラン ----
+function subsets(arr, k) {
+  const out = [[]];
+  for (let i = 0; i < arr.length; i++) {
+    out.push([arr[i]]);
+    if (k >= 2) for (let j = i + 1; j < arr.length; j++) out.push([arr[i], arr[j]]);
+  }
+  return out;
+}
+
+function planWeek(fam, district, season, mods) {
+  const d = applyMods(district, mods);
+  const gak = d.resources.find((r) => r.kind === "gakudou");
+  const gakOpts = [false];
+  if (gak && usable(gak, fam, season)) gakOpts.push(true);
+  const actIds = d.resources.filter((r) => r.kind === "activity" && usable(r, fam, season)).map((r) => r.id);
+  const plans = [];
+  for (const g of gakOpts) for (const acts of subsets(actIds, 2)) {
+    const set = { gakudou: g, acts };
+    const days = ALL.map((day) => searchDay(fam, d, set, day, season));
+    const used = new Set();
+    days.forEach((x) => x.ok && x.segs.forEach((s) => s.r && used.add(s.r.id)));
+    if (g && !used.has(gak.id)) continue;
+    if (acts.some((a) => !used.has(a))) continue;
+    const famiWeek = days.reduce((n, x) => n + (x.ok ? x.fami : 0), 0);
+    const items = [];
+    if (g) items.push({ r: gak, fee: monthlyFee(gak, fam) });
+    acts.forEach((id) => { const r = d.resources.find((x) => x.id === id); items.push({ r, fee: monthlyFee(r, fam) }); });
+    const famiMonthly = famiWeek * 4 * famiFee(fam);
+    const cost = items.reduce((n, x) => n + x.fee, 0) + famiMonthly;
+    const baseCost = items.reduce((n, x) => n + x.r.fee, 0) + famiWeek * 4 * FAMI.fee;
+    const okDays = days.filter((x) => x.ok).length;
+    const interest = fam.interest !== "こだわらない" && acts.some((id) => d.resources.find((x) => x.id === id).interest === fam.interest);
+    const free = [...used].map((id) => d.resources.find((x) => x.id === id)).filter((r) => r && r.fee === 0);
+    plans.push({ set, days, okDays, cost, baseCost, famiWeek, famiMonthly, items, free, interest, within: cost <= fam.budget,
+      sig: [...used].sort().join("|") + "|" + famiWeek });
+  }
+  plans.sort((a, b) => (b.within - a.within) || (b.okDays - a.okDays) || (b.interest - a.interest) || (a.cost - b.cost) || (a.items.length - b.items.length));
+  const seen = new Set();
+  const uniq = plans.filter((p) => (seen.has(p.sig) ? false : (seen.add(p.sig), true)));
+  const full = uniq.filter((p) => p.within && p.okDays === 5);
+  const bestWithin = uniq.filter((p) => p.within).sort((a, b) => b.okDays - a.okDays || a.cost - b.cost)[0] || null;
+  const index = bestWithin ? bestWithin.okDays * 20 : 0;
+  return { district: d, plans: uniq, full, bestWithin, index };
+}
+
+function planTitle(p) {
+  const names = [];
+  const kinds = new Set();
+  p.days.forEach((x) => x.ok && x.segs.forEach((s) => KIND[s.kind] && kinds.add(s.kind)));
+  if (kinds.has("gakudou")) names.push("学童");
+  if (kinds.has("kyoushitsu")) names.push("放課後子供教室");
+  if (kinds.has("jidoukan")) names.push("児童館");
+  p.items.filter((i) => i.r.kind === "activity").forEach((i) => names.push(i.r.name.replace(/^(\S+?)(スポーツ|音楽|学習|英語|英会話|スイミング|少年|絵画|ダンス)/, "$2")));
+  if (p.famiWeek) names.push("ファミサポ");
+  return names.join("＋");
+}
+
+// ---- 自治体向け ----
+const TYPES = [
+  { id: "t1", name: "標準的な共働き家庭", short: "標準", fam: { grade: 3, schoolEnd: T(15), homeTime: T(18, 30), budget: 15000, escort: true, subsidy: false, interest: "こだわらない" } },
+  { id: "t2", name: "スライドの例の家庭", short: "スライドの例", fam: { grade: 3, schoolEnd: T(15), homeTime: T(18, 30), budget: 5000, escort: false, subsidy: true, interest: "スポーツ" } },
+  { id: "t3", name: "ひとり親・帰宅19時", short: "ひとり親", fam: { grade: 3, schoolEnd: T(15), homeTime: T(19), budget: 3000, escort: false, subsidy: true, interest: "こだわらない" } },
+  { id: "t4", name: "小1・送迎できない", short: "小1", fam: { grade: 1, schoolEnd: T(14, 45), homeTime: T(18, 30), budget: 13000, escort: false, subsidy: false, interest: "こだわらない" } },
+];
+
+function gapBins(fam, district, season, mods) {
+  const res = planWeek(fam, district, season, mods);
+  const bins = new Array(20).fill(0); // 14:30〜19:30 を15分刻み
+  const p = res.bestWithin || res.plans[0];
+  if (!p) return bins;
+  p.days.forEach((x) => {
+    if (x.ok) return;
+    const from = x.gap.reason === "home" ? x.gap.from - 15 : x.gap.from;
+    for (let i = 0; i < 20; i++) {
+      const b0 = T(14, 30) + i * 15, b1 = b0 + 15;
+      if (b1 > from && b0 < x.gap.to) bins[i]++;
+    }
+  });
+  return bins;
+}
+
+if (typeof module !== "undefined") module.exports = { DISTRICTS, TYPES, planWeek, planTitle, gapBins, fmt, T, DAYS, KIND, monthlyFee, FAMI };
+
+</script>
+<script>
+(() => {
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const yen = (n) => `${Math.round(n).toLocaleString("ja-JP")}円`;
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const SEASON = { may: "5月", oct: "10月" };
+const SEASON_LONG = { may: "5月（学童が混む時期）", oct: "10月（学童に空きが出る時期）" };
+const DIST = (id) => DISTRICTS.find((d) => d.id === id);
+const TYPE = (id) => TYPES.find((t) => t.id === id);
+const short = (name, d) => name.startsWith(d.name) ? name.slice(d.name.length) : name;
+
+const PRESETS = [
+  { id: "ex", label: "スライドの例", district: "asahi", type: "t2" },
+  { id: "single", label: "ひとり親・帰宅19時", district: "minato", type: "t3" },
+  { id: "g1", label: "小1・送り迎えできない", district: "hibari", type: "t4" },
+];
+
+const S = {
+  tab: "parent",
+  preset: "ex",
+  fam: { district: "asahi", ...TYPES[1].fam, season: "may" },
+  muni: { type: "t3", season: "may", sel: "minato", mods: {} },
+};
+
+/* ---------- 共通UI部品 ---------- */
+function seg(el, options, value, onPick) {
+  el.innerHTML = options.map(([v, l]) => `<button type="button" data-v="${esc(v)}" aria-pressed="${String(v) === String(value)}">${esc(l)}</button>`).join("");
+  el.onclick = (e) => { const b = e.target.closest("button"); if (!b) return; onPick(b.dataset.v); };
+}
+
+/* ---------- タブ ---------- */
+function setTab(tab) {
+  S.tab = tab;
+  document.querySelectorAll(".tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  ["parent", "muni", "how"].forEach((id) => { $("#" + id).hidden = id !== tab; });
+  if (tab === "muni") renderMuni();
+}
+document.querySelector(".tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  setTab(b.dataset.tab); window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+});
+
+/* ---------- 保護者向け：フォーム ---------- */
+const times = (from, to, step) => { const a = []; for (let t = from; t <= to; t += step) a.push(t); return a; };
+function renderForm() {
+  const f = S.fam;
+  $("#presets").innerHTML = PRESETS.map((p) => `<button type="button" data-p="${p.id}" aria-pressed="${S.preset === p.id}">${esc(p.label)}</button>`).join("");
+  $("#fDistrict").innerHTML = DISTRICTS.map((d) => `<option value="${d.id}" ${d.id === f.district ? "selected" : ""}>${d.name}校区</option>`).join("");
+  seg($("#fGrade"), [1, 2, 3, 4, 5, 6].map((g) => [g, `${g}年`]), f.grade, (v) => set({ grade: +v }));
+  $("#fEnd").innerHTML = times(T(14, 30), T(15, 30), 15).map((t) => `<option value="${t}" ${t === f.schoolEnd ? "selected" : ""}>${fmt(t)}</option>`).join("");
+  $("#fHome").innerHTML = times(T(17, 30), T(19, 30), 15).map((t) => `<option value="${t}" ${t === f.homeTime ? "selected" : ""}>${fmt(t)}</option>`).join("");
+  $("#fBudget").value = f.budget; $("#oBudget").textContent = yen(f.budget);
+  seg($("#fEscort"), [["1", "できる"], ["0", "できない"]], f.escort ? "1" : "0", (v) => set({ escort: v === "1" }));
+  seg($("#fSub"), [["1", "対象"], ["0", "対象外"]], f.subsidy ? "1" : "0", (v) => set({ subsidy: v === "1" }));
+  seg($("#fInt"), ["スポーツ", "音楽", "学習", "アート", "こだわらない"].map((x) => [x, x]), f.interest, (v) => set({ interest: v }));
+  seg($("#fSeason"), [["may", SEASON_LONG.may], ["oct", SEASON_LONG.oct]], f.season, (v) => set({ season: v }));
+}
+function set(patch, keepPreset = false) {
+  Object.assign(S.fam, patch);
+  if (!keepPreset) S.preset = null;
+  renderForm(); renderResults();
+}
+function applyPreset(id) {
+  const p = PRESETS.find((x) => x.id === id);
+  S.preset = id;
+  Object.assign(S.fam, { district: p.district, ...TYPE(p.type).fam });
+  renderForm(); renderResults();
+}
+$("#presets").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) applyPreset(b.dataset.p); });
+$("#fDistrict").addEventListener("change", (e) => set({ district: e.target.value }));
+$("#fEnd").addEventListener("change", (e) => set({ schoolEnd: +e.target.value }));
+$("#fHome").addEventListener("change", (e) => set({ homeTime: +e.target.value }));
+$("#fBudget").addEventListener("input", (e) => { S.fam.budget = +e.target.value; S.preset = null; $("#oBudget").textContent = yen(S.fam.budget); renderResults(); renderPresetsOnly(); });
+function renderPresetsOnly() { document.querySelectorAll("#presets button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.p === S.preset))); }
+
+/* ---------- 時間のリボン ---------- */
+const SEG_LABEL = { walk: null, wait: "", fami: "ファミサポ", bus: "送迎" };
+function ribbon(dayRes, f, d) {
+  const S0 = f.schoolEnd, H = f.homeTime, span = H - S0;
+  const pct = (t) => ((Math.min(Math.max(t, S0), H) - S0) / span) * 100;
+  let segs = dayRes.ok ? dayRes.segs : [...(dayRes.partial || [])];
+  if (!dayRes.ok) {
+    if (dayRes.gap.reason === "gap") segs = [...segs, { kind: "gap", from: dayRes.gap.from, to: H, label: "空白" }];
+    else segs = [...segs, { kind: "gap", from: Math.max(S0, H - Math.max(10, span * 0.07)), to: H, label: "帰れない" }];
+  }
+  const html = segs.filter((s) => s.kind !== "pickup").map((s) => {
+    const a = pct(s.from), b = pct(s.to), w = b - a;
+    if (w <= 0.2) return "";
+    const name = s.r ? short(s.label, d) : s.kind === "walk" ? s.label.replace("歩いて帰宅", "徒歩で帰宅") : s.label;
+    const shown = s.kind === "gap" ? s.label : s.r ? name : (SEG_LABEL[s.kind] ?? name);
+    const tip = `${name}　${fmt(Math.max(s.from, S0))}〜${fmt(Math.min(Math.max(s.to, s.from), H))}`;
+    const cls = s.kind === "gap" ? "gap" : `k-${s.kind} ${s.kind}`;
+    return `<div class="seg-b ${cls}" style="left:${a}%;width:${w}%" title="${esc(tip)}">${w > 9 ? esc(shown) : ""}</div>`;
+  }).join("");
+  return `<div class="track" role="img" aria-label="${esc(dayRes.ok ? "つながる" : "空白あり")}">${html}</div>`;
+}
+function axis(f) {
+  const S0 = f.schoolEnd, H = f.homeTime, span = H - S0;
+  const ticks = [S0];
+  for (let t = Math.ceil(S0 / 60) * 60; t < H; t += 60) if (t - S0 > span * 0.1 && H - t > span * (window.innerWidth > 700 ? 0.1 : 0.18)) ticks.push(t);
+  ticks.push(H);
+  return `<div class="axis num">${ticks.map((t) => `<span style="left:${((t - S0) / span) * 100}%">${fmt(t)}</span>`).join("")}</div>`;
+}
+function legend() {
+  const k = [["gakudou", "学童"], ["kyoushitsu", "放課後子供教室"], ["jidoukan", "児童館"], ["activity", "体験活動"], ["fami", "ファミサポ"], ["bus", "送迎"], ["walk", "徒歩"]];
+  return `<div class="legend">${k.map(([c, l]) => `<span><i class="k-${c}"></i>${l}</span>`).join("")}<span><i class="seg-b gap" style="position:static;display:inline-block;width:12px;height:12px;border-radius:3px"></i>つながらない時間</span></div>`;
+}
+
+/* ---------- 保護者向け：結果 ---------- */
+function dayFlowText(x, d, f) {
+  const src = x.ok ? x.segs : (x.partial || []);
+  const parts = src.filter((s) => s.kind !== "wait").map((s) => {
+    if (s.r) return `${short(s.label, d)} ${fmt(Math.max(s.from, f.schoolEnd))}〜${fmt(Math.min(s.to, f.homeTime))}`;
+    if (s.kind === "pickup") return `保護者がお迎え ${fmt(f.homeTime)}`;
+    return s.label.replace("歩いて帰宅", "歩いて帰宅");
+  });
+  if (!x.ok) parts.push(x.gap.reason === "gap" ? `${fmt(x.gap.from)}〜${fmt(x.gap.to)} は空白` : `${fmt(f.homeTime)} に帰る手段なし`);
+  return parts.join(" → ");
+}
+function gapSummary(p, f) {
+  const groups = new Map();
+  p.days.forEach((x, i) => {
+    if (x.ok) return;
+    const key = x.gap.reason === "gap" ? `${fmt(x.gap.from)}〜${fmt(x.gap.to)} をつなぐ資源がありません` : `${fmt(f.homeTime)} に家へ帰る手段（お迎え・送迎・一人での帰宅）がありません`;
+    groups.set(key, [...(groups.get(key) || []), DAYS[i]]);
+  });
+  return [...groups].map(([k, ds]) => `<li>${ds.join("・")}曜日：${esc(k)}</li>`).join("");
+}
+function planCard(p, i, f, d, ng = false) {
+  const letter = "ABC"[i];
+  const saved = p.baseCost - p.cost;
+  const tags = [];
+  tags.push(p.okDays === 5 ? `<span class="tag ok">平日5日つながる</span>` : `<span class="tag warn">平日${p.okDays}日だけつながる</span>`);
+  if (p.interest) tags.push(`<span class="tag ok">${esc(f.interest)}ができる</span>`);
+  if (p.famiWeek) tags.push(`<span class="tag">ファミサポ 週${p.famiWeek}回</span>`);
+  if (!p.within) tags.push(`<span class="tag warn">予算を${yen(p.cost - f.budget)}超えます</span>`);
+  const rows = p.days.map((x, di) => `<div class="day">${DAYS[di]}</div>${ribbon(x, f, d)}`).join("");
+  const items = p.items.map((it) => {
+    const days = it.r.days.length === 5 ? "月〜金" : it.r.days.map((x) => DAYS[x]).join("・");
+    const fee = it.fee !== it.r.fee ? `<s>${yen(it.r.fee)}</s>${yen(it.fee)}` : yen(it.fee);
+    return `<li><span>${esc(short(it.r.name, d))}（${days} ${fmt(it.r.start)}〜${fmt(it.r.end)}）</span><span class="fee num">${fee}</span></li>`;
+  });
+  p.free.forEach((r) => items.push(`<li><span>${esc(short(r.name, d))}（${fmt(r.start)}〜${fmt(r.end)}）</span><span class="fee">無料</span></li>`));
+  if (p.famiWeek) {
+    const unit = f.subsidy ? FAMI.fee / 2 : FAMI.fee;
+    const fee = f.subsidy ? `<s>${yen(p.famiWeek * 4 * FAMI.fee)}</s>${yen(p.famiMonthly)}` : yen(p.famiMonthly);
+    items.push(`<li><span>ファミサポ 週${p.famiWeek}回 × 4週（1回${yen(unit)}）</span><span class="fee num">${fee}</span></li>`);
+  }
+  return `<article class="plan ${i === 0 && !ng ? "first" : ""} ${ng ? "ngplan" : ""}" data-plan="${i}">
+    <div class="plan-head">
+      <div class="plan-name"><span class="badge">${ng ? "最も近い案" : "プラン" + letter}</span><h3>${esc(planTitle(p))}</h3></div>
+      <div class="price">${p.okDays === 0 ? "" : `<div class="yen num">月 ${Math.round(p.cost).toLocaleString("ja-JP")}<small>円</small></div>${saved > 0 ? `<div class="before num">助成なしなら ${yen(p.baseCost)}</div>` : ""}`}</div>
+    </div>
+    <div class="tags">${tags.join("")}</div>
+    <div class="week">${axis(f)}${rows}</div>
+    ${ng ? `<ul class="gaplist">${gapSummary(p, f)}</ul>` : ""}
+    <details class="flow" ${i === 0 ? "open" : ""}><summary>費用の内訳と1日の流れ</summary>
+      <ul class="items">${items.join("")}</ul>
+      <ul class="dayflow">${p.days.map((x, di) => `<li><b>${DAYS[di]}</b>${esc(dayFlowText(x, d, f))}</li>`).join("")}</ul>
+    </details>
+  </article>`;
+}
+function renderResults() {
+  const f = S.fam, d = DIST(f.district);
+  const res = planWeek(f, d, f.season);
+  const el = $("#results");
+  let html = "";
+  if (res.full.length) {
+    html += `<div class="status" id="status"><div class="big">つなげるプランが${res.full.length > 3 ? "3件以上" : res.full.length + "件"}見つかりました</div>
+      <div class="sub">${d.name}校区で、平日5日すべてを月${yen(f.budget)}の予算内でつなげます。${SEASON[f.season]}時点の空き状況で計算しています。</div></div>`;
+    html += condLine(f, d) + legend();
+    html += res.full.slice(0, 3).map((p, i) => planCard(p, i, f, d)).join("");
+  } else {
+    const best = res.bestWithin || res.plans.slice().sort((a, b) => b.okDays - a.okDays || a.cost - b.cost)[0];
+    const over = res.plans.filter((p) => p.okDays === 5).sort((a, b) => a.cost - b.cost)[0];
+    html += `<div class="status ng" id="status"><div class="big">平日5日をつなぐプランは見つかりませんでした</div>
+      <div class="sub">${d.name}校区では、${best && best.okDays ? `予算内でつなげるのは最も多くて平日${best.okDays}日です。` : "予算内では、平日のどの日もつなげません。"}${over ? `予算を月${yen(over.cost)}まで増やせば、5日つなぐプランがあります。` : "予算を増やしても、5日をつなぐ組み合わせはありません。"}
+      <br><button class="linkbtn" id="toMuni" type="button">この空白を自治体向けの格差マップで見る</button></div></div>`;
+    html += condLine(f, d) + legend();
+    if (best) html += planCard(best, 0, f, d, true);
+  }
+  el.innerHTML = html;
+  const ed = $("#editCond"); if (ed) ed.onclick = () => { $("#famForm").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }); };
+  const tm = $("#toMuni");
+  if (tm) tm.onclick = () => { S.muni.sel = f.district; S.muni.season = f.season; const t = TYPES.find((t) => JSON.stringify(t.fam) === JSON.stringify(pickFam(f))); if (t) S.muni.type = t.id; setTab("muni"); window.scrollTo({ top: 0 }); };
+}
+function condLine(f, d) {
+  return `<div class="cond"><span>${d.name}校区・${f.grade}年・${fmt(f.schoolEnd)}〜${fmt(f.homeTime)}・月${yen(f.budget)}・送り迎え${f.escort ? "できる" : "できない"}${f.subsidy ? "・助成対象" : ""}</span><button type="button" class="linkbtn edit" id="editCond">条件を変える</button></div>`;
+}
+const pickFam = (f) => ({ grade: f.grade, schoolEnd: f.schoolEnd, homeTime: f.homeTime, budget: f.budget, escort: f.escort, subsidy: f.subsidy, interest: f.interest });
+
+/* ---------- 自治体向け ---------- */
+const cache = new Map();
+const modsOf = (id) => S.muni.mods[id] || new Set();
+function idx(typeId, distId, season, useMods = true) {
+  const m = useMods ? modsOf(distId) : new Set();
+  const key = `${typeId}|${distId}|${season}|${[...m].sort().join(",")}`;
+  if (!cache.has(key)) cache.set(key, planWeek(TYPE(typeId).fam, DIST(distId), season, m).index);
+  return cache.get(key);
+}
+const C0 = [176, 66, 12], C1 = [253, 241, 228];
+const color = (v) => { const t = v / 100; return `rgb(${C0.map((c, i) => Math.round(c + (C1[i] - c) * t)).join(",")})`; };
+const textOn = (v) => (v < 55 ? "#FFFFFF" : "#3A2310");
+
+function renderMuni() {
+  const M = S.muni;
+  seg($("#mType"), TYPES.map((t) => [t.id, t.name]), M.type, (v) => { M.type = v; renderMuni(); });
+  seg($("#mSeason"), [["may", SEASON_LONG.may], ["oct", SEASON_LONG.oct]], M.season, (v) => { M.season = v; renderMuni(); });
+  $("#scaleBar").style.background = `linear-gradient(90deg, ${color(0)}, ${color(50)}, ${color(100)})`;
+  $("#mapTitle").textContent = `放課後アクセス指数　${TYPE(M.type).name}・${SEASON[M.season]}`;
+  // map
+  $("#map").innerHTML = DISTRICTS.map((d) => {
+    const v = idx(M.type, d.id, M.season);
+    const has = modsOf(d.id).size > 0;
+    return `<g tabindex="0" role="button" data-d="${d.id}" aria-label="${d.name}校区 指数${v}%${has ? "（施策あり）" : ""}" aria-pressed="${d.id === M.sel}">
+      <polygon points="${d.poly}" fill="${color(v)}" class="${d.id === M.sel ? "sel" : ""}"></polygon>
+      <text class="lbl" x="${d.label[0]}" y="${d.label[1] - 8}" text-anchor="middle" font-size="17" fill="${textOn(v)}">${d.name}</text>
+      <text class="lbl num" x="${d.label[0]}" y="${d.label[1] + 20}" text-anchor="middle" font-size="24" fill="${textOn(v)}">${v}%</text>
+      ${has ? `<text class="lbl" x="${d.label[0]}" y="${d.label[1] + 42}" text-anchor="middle" font-size="12" fill="${textOn(v)}">施策あり</text>` : ""}
+    </g>`;
+  }).join("");
+  $("#map").onclick = (e) => { const g = e.target.closest("g[data-d]"); if (g) { M.sel = g.dataset.d; renderMuni(); } };
+  $("#map").onkeydown = (e) => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset.d) { e.preventDefault(); M.sel = e.target.dataset.d; renderMuni(); $(`#map g[data-d="${M.sel}"]`).focus(); } };
+  // stats
+  const vals = DISTRICTS.map((d) => idx(M.type, d.id, M.season));
+  const base = DISTRICTS.map((d) => idx("t1", d.id, M.season));
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const diff = Math.round(mean(base) - mean(vals));
+  $("#stats").innerHTML = `
+    <div class="stat"><div class="v num">${Math.round(mean(vals))}%</div><div class="k">全8校区の平均</div></div>
+    <div class="stat"><div class="v num">${vals.filter((v) => v === 0).length}校区</div><div class="k">指数が0%の校区</div></div>
+    <div class="stat"><div class="v num">${M.type === "t1" ? "―" : (diff > 0 ? "−" : diff < 0 ? "+" : "±") + Math.abs(diff) + "pt"}</div><div class="k">標準的な家庭との差</div></div>`;
+  renderSide(); renderMatrix();
+}
+
+function renderSide() {
+  const M = S.muni, d = DIST(M.sel), t = TYPE(M.type), mods = modsOf(d.id);
+  const v = idx(M.type, d.id, M.season);
+  const bars = TYPES.map((tt) => {
+    const b = idx(tt.id, d.id, M.season, false), a = idx(tt.id, d.id, M.season, true);
+    const label = a !== b ? `<span class="num">${b}% → </span><span class="up num">${a}%</span>` : `<span class="num">${a}%</span>`;
+    return `<div class="tbar ${tt.id === M.type ? "cur" : ""}"><span>${tt.short}</span><span class="t"><i style="width:${a}%"></i></span><span class="v">${label}</span></div>`;
+  }).join("");
+  const bins = gapBins(t.fam, DIST(d.id), M.season, mods);
+  const maxB = 5, W = 400, Hh = 110, bw = W / bins.length;
+  const hist = bins.some((x) => x) ? `<svg viewBox="0 0 ${W} ${Hh + 22}" role="img" aria-label="足りない時間帯のグラフ">
+      ${bins.map((x, i) => { const h = (x / maxB) * Hh; return `<rect x="${i * bw + 1.5}" y="${Hh - h}" width="${bw - 3}" height="${h}" rx="3" fill="var(--red)" opacity="${x ? 0.85 : 0}"><title>${fmt(T(14, 30) + i * 15)}〜 ${x}日</title></rect>`; }).join("")}
+      <line x1="0" x2="${W}" y1="${Hh}" y2="${Hh}" stroke="var(--line)"/>
+      ${[15, 16, 17, 18, 19].map((h) => { const i = (T(h) - T(14, 30)) / 15; return `<text x="${i * bw}" y="${Hh + 16}" font-size="12" text-anchor="middle" fill="var(--ink-3)">${h}:00</text>`; }).join("")}
+    </svg>` : `<p class="note" style="margin:0">この類型では、平日5日とも空白はありません。</p>`;
+  const P = [
+    ["gakudou", "学童の定員を増やす", "5月の満員を解消します"],
+    ["fami", "ファミサポの担い手を増やす", "平日5日すべてで利用できるようにします"],
+    ["evening", "校内に放課後の居場所を新設する", "下校から19時まで、無料で過ごせる場所です"],
+  ];
+  const changes = TYPES.map((tt) => ({ tt, b: idx(tt.id, d.id, M.season, false), a: idx(tt.id, d.id, M.season, true) })).filter((x) => x.a !== x.b);
+  const effect = mods.size ? (changes.length ? `選んだ施策で、${changes.map((x) => `${x.tt.short}は ${x.b}% → ${x.a}%`).join("、")} になります。${changes.find((x) => x.tt.id === M.type) ? "" : `${t.short}の家庭には効果がありません。`}` : `選んだ施策では、この校区の指数は変わりません。`) : "";
+  $("#side").innerHTML = `
+    <h2>${d.name}校区 <span class="idx num">${v}%</span></h2>
+    <div class="note" style="margin:0">表示中：${esc(t.name)}・${SEASON[M.season]}</div>
+    <div class="sub-h">家庭の類型ごとの指数</div>
+    <div class="tbars" id="tbars">${bars}</div>
+    <div class="sub-h">足りない時間帯（${esc(t.short)}の家庭、平日5日のうち何日か）</div>
+    <div class="hist" id="hist">${hist}</div>
+    <div class="sub-h">施策を試す</div>
+    <div class="policies" id="policies">${P.map(([k, l, s]) => `<button type="button" data-k="${k}" aria-pressed="${mods.has(k)}"><span class="box"></span><span><b>${l}</b><span class="d">${s}</span></span></button>`).join("")}</div>
+    <div class="effect" id="effect" aria-live="polite">${effect}</div>`;
+  $("#policies").onclick = (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const m = new Set(modsOf(d.id)); m.has(b.dataset.k) ? m.delete(b.dataset.k) : m.add(b.dataset.k);
+    S.muni.mods[d.id] = m; renderMuni();
+  };
+}
+
+function renderMatrix() {
+  const M = S.muni;
+  const head = `<tr><th></th>${TYPES.map((t) => `<th class="${t.id === M.type ? "col-sel" : ""}">${t.short}</th>`).join("")}</tr>`;
+  const rows = DISTRICTS.map((d) => `<tr class="${d.id === M.sel ? "sel" : ""}"><th class="row">${d.name}${modsOf(d.id).size ? "＊" : ""}</th>${TYPES.map((t) => {
+    const v = idx(t.id, d.id, M.season);
+    return `<td class="num ${t.id === M.type ? "col-sel" : ""}" data-d="${d.id}" data-t="${t.id}" style="background:${color(v)};color:${textOn(v)}" title="${d.name}・${t.name}：${v}%">${v}%</td>`;
+  }).join("")}</tr>`).join("");
+  $("#matrix").innerHTML = head + rows;
+  $("#matrix").onclick = (e) => { const c = e.target.closest("td[data-d]"); if (!c) return; M.sel = c.dataset.d; M.type = c.dataset.t; renderMuni(); };
+}
+
+/* ---------- 1分ガイド ---------- */
+const STEPS = [
+  { tab: "parent", run: () => applyPreset("ex"), spot: () => $(".plan"),
+    text: "スライドの例の家庭（小3・帰宅18:30・送り迎えできない・月5,000円・助成対象）です。条件を入れると、学校が終わってから帰宅までをつなぐプランがその場で計算されます。" },
+  { tab: "parent", spot: () => $(".plan .week"),
+    text: "月・水・金は、放課後子供教室 → 徒歩8分 → スポーツ教室 → ファミサポで帰宅。エントリーシートに載せた例と同じプランが、計算から導かれています。" },
+  { tab: "parent", run: () => applyPreset("single"), spot: () => $("#results"),
+    text: "同じ市でも、ひとり親で帰宅が19時、予算が月3,000円の家庭が「みなと」校区に住むと、平日5日をつなぐプランは見つかりません。足りない時間帯を赤で示します。" },
+  { tab: "muni", run: () => { Object.assign(S.muni, { type: "t3", season: "may", sel: "minato" }); S.muni.mods = {}; renderMuni(); }, spot: () => $("#mapCard"),
+    text: "自治体向けの画面です。同じ計算を校区ごとに行い、平日5日のうちプランが成立する日の割合を地図にしました。条件の厳しい家庭では、指数0%の校区が目立ちます。" },
+  { tab: "muni", spot: () => $("#hist"),
+    text: "「みなと」校区では、ひとり親家庭にとって放課後のほとんどの時間が空白です。学童が満員で、放課後子供教室も週2日しか開いていないためです。" },
+  { tab: "muni", run: () => { S.muni.mods = { minato: new Set(["gakudou"]) }; renderMuni(); }, spot: () => $("#tbars"),
+    text: "学童の定員を増やしてみます。標準的な家庭は100%になりますが、学童が18時半に閉まるため、帰宅19時のひとり親家庭は0%のままです。" },
+  { tab: "muni", run: () => { S.muni.mods = { minato: new Set(["evening"]) }; renderMuni(); }, spot: () => $("#tbars"),
+    text: "代わりに、校内に19時まで過ごせる居場所を新設すると、ひとり親家庭も100%になります。どの施策が誰に効くかを、導入する前に比べられます。" },
+  { tab: "muni", spot: () => $("#matrixCard"),
+    text: "校区と家庭の類型ごとの一覧です。同じ市の中でも、条件の厳しい家庭ほど選べる放課後が少ない構造が見えます。" },
+  { tab: "how", spot: () => $("#how .card"),
+    text: "結果はあらかじめ用意したものではなく、入力のたびにブラウザの中で計算しています。データはすべて架空の「みらい市」のものです。" },
+];
+const TOUR = { i: 0, playing: true, timer: null, dur: 7500 };
+function clearSpot() { document.querySelectorAll(".spot").forEach((e) => e.classList.remove("spot")); }
+function go(i) {
+  TOUR.i = Math.max(0, Math.min(STEPS.length - 1, i));
+  const st = STEPS[TOUR.i];
+  clearTimeout(TOUR.timer); clearSpot();
+  if (S.tab !== st.tab) setTab(st.tab);
+  if (st.run) st.run();
+  $("#tStep").textContent = `${TOUR.i + 1} / ${STEPS.length}`;
+  $("#tMode").textContent = TOUR.playing ? "自動で進みます" : "一時停止中";
+  $("#tText").textContent = st.text;
+  $("#tNext").textContent = TOUR.i === STEPS.length - 1 ? "終わる" : "次へ";
+  requestAnimationFrame(() => {
+    const el = st.spot && st.spot();
+    if (el) { el.classList.add("spot"); el.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" }); }
+  });
+  const bar = $("#tProg");
+  bar.style.transition = "none"; bar.style.width = "0";
+  if (TOUR.playing) {
+    void bar.offsetWidth;
+    bar.style.transition = `width ${TOUR.dur}ms linear`; bar.style.width = "100%";
+    TOUR.timer = setTimeout(() => (TOUR.i < STEPS.length - 1 ? go(TOUR.i + 1) : endTour()), TOUR.dur);
+  }
+}
+function startTour() { TOUR.playing = !reduceMotion; $("#tPause").textContent = TOUR.playing ? "一時停止" : "自動で進める"; $("#tour").hidden = false; go(0); }
+function endTour() { clearTimeout(TOUR.timer); clearSpot(); $("#tour").hidden = true; }
+function pause() { TOUR.playing = false; $("#tMode").textContent = "一時停止中"; clearTimeout(TOUR.timer); const bar = $("#tProg"); bar.style.transition = "none"; bar.style.width = "0"; $("#tPause").textContent = "自動で進める"; }
+$("#tourStart").onclick = startTour;
+$("#tNext").onclick = () => (TOUR.i < STEPS.length - 1 ? go(TOUR.i + 1) : endTour());
+$("#tPrev").onclick = () => go(TOUR.i - 1);
+$("#tEnd").onclick = endTour;
+$("#tPause").onclick = () => { if (TOUR.playing) pause(); else { TOUR.playing = true; $("#tPause").textContent = "一時停止"; go(TOUR.i); } };
+document.querySelector("main").addEventListener("pointerdown", () => { if (!$("#tour").hidden && TOUR.playing) pause(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#tour").hidden) endTour(); });
+
+/* ---------- 起動 ---------- */
+renderForm(); renderResults();
+})();
+
+</script>
+</body>
+</html>
